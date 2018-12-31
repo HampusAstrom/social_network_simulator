@@ -1,5 +1,11 @@
 import random as rng
 
+people = {}
+
+def clamp(x, bot = 0, top = 100):
+    x = max(x, bot)
+    return min(x, top)
+
 class Person:
     def __init__(self, name):
         self.name = name
@@ -23,6 +29,23 @@ class Person:
         else:
             return False
 
+    def home_alone(self):
+        n_energy = clamp(self.energy + 2 - self.personality['extroversion'])
+        self.loneliness = clamp(self.loneliness + 2 + max(-1, self.personality['extroversion']))
+        n_happiness = clamp(self.happiness - self.loneliness * 0.1)
+        self.energy = n_energy
+        self.happiness = n_happiness
+
+    def experience_event(self, num_attend):
+        n_energy = clamp(self.energy - num_attend * 0.2 + self.personality['extroversion'])
+        self.loneliness = clamp(self.loneliness - 2)
+        n_happiness = clamp(self.happiness + 2 - self.loneliness * 0.05)
+        self.energy = n_energy
+        self.happiness = n_happiness
+
+    def score(self):
+        return (self.energy/100)*(self.happiness/100)*(1-self.loneliness/100)
+
     def print_state(self):
         print('{}:\tenergy = {:6.2f},\thappiness = {:6.2f},\tloneliness = {:6.2f}'.format(self.name,
             self.energy, self.happiness, self.loneliness))
@@ -33,15 +56,33 @@ class Person:
             print('{} = {:6.2f}'.format(trait, value), end='\t')
         print()
 
+class Event:
+    def __init__(self):
+        self.attendees = {}
+
+    def attend(self, name, person):
+        self.attendees[name] = person
+
+    def occur(self):
+        num = len(self.attendees)
+        for name, person in self.attendees.items():
+            person.experience_event(num)
+
 def main():
     people = {'Adam': Person('Adam'), 'Beth': Person('Beth'), 'Clare': Person('Clare')}
-    dummy_event = ''
     for i in range(100):
+        event = Event()
         print ('Event {}'.format(i))
         for name, person in people.items():
-            if person.assess_attendance(dummy_event):
-                print('{} attends event'.format(name))
+            print('{} has score {} before event.'.format(name, person.score()), end=' ')
+            if person.assess_attendance(event):
+                event.attend(name, person)
+                print('Attends.')
                 person.events_attended += 1
+            else:
+                person.home_alone()
+                print('Stays home.')
+        event.occur()
 
     print()
     for name, person in people.items():
